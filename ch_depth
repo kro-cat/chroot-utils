@@ -24,7 +24,7 @@ EOF
 
 # Check for required binaries
 while IFS= read -r bin; do
-	if ! command -V "${bin}" >/dev/null 2>&1; then
+	if ! env which "${bin}" >/dev/null 2>&1; then
 		echo "ERROR: Missing required tool in PATH: ${bin}" 1>&2
 		exit 1
 	fi

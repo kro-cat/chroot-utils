@@ -27,11 +27,12 @@ EOF
 
 # Check for required binaries
 while IFS= read -r bin; do
-	if ! command -V "${bin}" >/dev/null 2>&1; then
+	if ! env which "${bin}" >/dev/null 2>&1; then
 		echo "ERROR: Missing required tool in PATH: ${bin}" >&2
 		exit 1
 	fi
 done <<EOF
+echo
 xargs
 ch_depth
 EOF
@@ -106,21 +107,21 @@ replay() {
 		fi
 		case "${TYPE}" in
 			D)
-				/usr/bin/echo -e "[\e[1;94mDIRECTORY\e[0m] ${ROOT}/${RSRC} (${OPT})"
+				env echo -e "[\e[1;94mDIRECTORY\e[0m] ${ROOT}/${RSRC} (${OPT})"
 				mkdir -p "${ROOT}/${RSRC}"
 				chmod "${OPT}" "${ROOT}/${RSRC}"
 				;;
 			F)
-				/usr/bin/echo -e "[\e[1;92mFILE\e[0m] ${ROOT}/${RSRC} (${OPT})"
+				env echo -e "[\e[1;92mFILE\e[0m] ${ROOT}/${RSRC} (${OPT})"
 				cp -dp "${SRC}" "${ROOT}/${RSRC}"
 				chmod "${OPT}" "${ROOT}/${RSRC}"
 				;;
 			L)
-				/usr/bin/echo -e "[\e[1;96mLINK\e[0m] ${ROOT}/${RSRC} => ${OPT}"
+				env echo -e "[\e[1;96mLINK\e[0m] ${ROOT}/${RSRC} => ${OPT}"
 				ln -sf "${OPT}" "${ROOT}/${RSRC}"
 				;;
 			*)
-				>&2 /usr/bin/echo -e "\e[1;91mUnsupported type: \"${TYPE}\"\e[0m"
+				>&2 env echo -e "\e[1;91mUnsupported type: \"${TYPE}\"\e[0m"
 				;;
 		esac
 	done

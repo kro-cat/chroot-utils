@@ -20,7 +20,9 @@ EOF
 options="$(getopt -o hsP -l "help,strip,no-symlinks,physical,relative-to:,relative-base:" -- $@)"
 eval set -- "${options}"
 
-CMD="realpath"
+REAL_REALPATH="$(PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" which realpath)"
+
+CMD="${REAL_REALPATH}"
 REL_TO=
 REL_BASE=
 
@@ -33,7 +35,7 @@ while :; do
 			CMD="realpath_strip"
 			;;
 		-P|--physical)
-			CMD="realpath"
+			CMD="${REAL_REALPATH}"
 			;;
 		--relative-to)
 			REL_TO="$2"
