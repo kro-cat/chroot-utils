@@ -1,0 +1,95 @@
+#!/bin/sh
+
+# GNU realpath without GNU realpath
+
+usage() {
+	cat <<EOF
+Usage: realpath [OPTION]... FILE...
+Print the resolved absolute file name;
+all but the last component must exist
+
+  -P, --physical               resolve symlinks as encountered (default)
+      --relative-to=DIR        print the resolved path relative to DIR
+      --relative-base=DIR      print absolute paths unless paths below DIR
+  -s, --strip, --no-symlinks   don't expand symlinks
+  -h, --help        display this help and exit
+EOF
+	return 0
+}
+
+options="$(getopt -o hsP -l "help,strip,no-symlinks,physical,relative-to:,relative-base:" -- $@)"
+eval set -- "${options}"
+
+CMD="realpath"
+REL_TO=
+REL_BASE=
+
+while :; do
+	case "$1" in
+		-h|--help)
+			usage && exit 0
+			;;
+		-s|--strip|--no-symlinks)
+			CMD="realpath_strip"
+			;;
+		-P|--physical)
+			CMD="realpath"
+			;;
+		--relative-to)
+			REL_TO="$2"
+			shift 1
+			;;
+		--relative-base)
+			REL_BASE="$2"
+			shift 1
+			;;
+		*)
+			shift 1
+			break
+			;;
+	esac
+	shift 1
+done
+
+[ "$#" -eq 0 ] && usage && exit 2
+
+realpath_strip() {
+	while [ -n "${1:-}" ]
+	do
+		path="$(echo "${1}" | sed 's#/[^/]*/\.\./#/#g;s#\([^/]\+/\)\?\./#\1#g' )"
+		shift 1
+		case "${path}" in
+			/*)
+				echo "${path}"
+				;;
+			*)
+				realpath_strip "$(pwd)/${path}"
+				;;
+		esac
+	done
+}
+
+if [ -n "${REL_TO}" ]
+then
+	${CMD} $@ | while IFS= read -r path
+	do
+		from="$(realpath "${REL_TO}")"
+		common="${from}"
+		back=
+		while [ "${path#${common}}" = "${path}" ]
+		do
+			common="$(dirname "${common}")"
+			back="${back}/.."
+		done
+		path="$(echo "${path#${common}}" | sed 's#^\([^/]\)#/\1#')"
+		echo "${from}${back}${path}"
+	done
+elif [ -n "${REL_BASE}" ]
+then
+	${CMD} $@ | while IFS= read -r path
+	do
+		echo "${path#${REL_BASE}}"
+	done
+else
+	${CMD} $@
+fi
