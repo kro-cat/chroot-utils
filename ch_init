@@ -9,8 +9,8 @@ trap cleanup EXIT INT
 
 usage() {
 	cat <<EOF
-Usage: ch_init [OPTION]... FILE ROOT SECTION
-Copy sources from SECTION defined in FILE to ROOT
+Usage: ch_init [OPTION]... FILE ROOT SECTION...
+Copy sources from SECTION(S) defined in FILE to ROOT
 
 Options:
   -h, --help                   print this message
@@ -45,13 +45,13 @@ while :; do
 done
 
 shift 1
-[ "$#" -ne 3 ] && usage && exit 2
+[ "$#" -lt 3 ] && usage && exit 2
 
 INI="$(realpath $1)"
 shift 1
 
 ROOT="$1"
-SECTION="$2"
+shift 1
 
 TRACKFILE="${TEMPD}/track"
 touch "${TRACKFILE}"
@@ -112,24 +112,30 @@ getparam() {
 
 # build list of all sections to include
 get_deps() {
-	# Check for the section
-	if ! grep -qe "^\[$1\]" "${INI}"
-	then
-		>&2 echo "section \`$1' is unknown"
-		exit 1
-	fi
-
-	echo "$1" | tee -a "${DEPENDENCIES}"
-	getparam "$1" include | while IFS= read -r dep
+	while [ "$#" -gt 0 ]
 	do
-		if ! grep -q "^${dep}$" "${DEPENDENCIES}"
+		SECTION="$1"
+		shift 1
+
+		# Check for the section
+		if ! grep -qe "^\[${SECTION}\]" "${INI}"
 		then
-			get_deps "${dep}"
+			>&2 echo "section \`${section}' is unknown"
+			exit 1
 		fi
+
+		echo "${SECTION}" | tee -a "${DEPENDENCIES}"
+		getparam "${SECTION}" include | while IFS= read -r dep
+		do
+			if ! grep -q "^${dep}$" "${DEPENDENCIES}"
+			then
+				get_deps "${dep}"
+			fi
+		done
 	done
 }
 
-get_deps "${SECTION}" | while IFS= read -r section
+get_deps $@ | while IFS= read -r section
 do
 	echo "Section ${section} \"$(iniget "${INI}" "${section}" comment)\""
 
