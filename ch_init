@@ -14,6 +14,7 @@ Copy sources from SECTION(S) defined in FILE to ROOT
 
 Options:
   -h, --help                   print this message
+      --as-specified           do not recursively copy section includes
 EOF
 	return 0
 }
@@ -30,13 +31,19 @@ ch_cp
 iniget
 EOF
 
-options="$(getopt -o h -l help -- $@)"
+options="$(getopt -o h -l 'help,as-specified' -- $@)"
 eval set -- "${options}"
+
+SKIP_INCLUDES=false
 
 while :; do
 	case "$1" in
 		-h|--help)
 			usage && exit 0
+			;;
+		--as-specified)
+			SKIP_INCLUDES=true
+			shift 1
 			;;
 		*)
 			break
@@ -125,13 +132,17 @@ get_deps() {
 		fi
 
 		echo "${SECTION}" | tee -a "${DEPENDENCIES}"
-		getparam "${SECTION}" include | while IFS= read -r dep
-		do
-			if ! grep -q "^${dep}$" "${DEPENDENCIES}"
-			then
-				get_deps "${dep}"
-			fi
-		done
+
+		if [ "${SKIP_INCLUDES}" = false ]
+		then
+			getparam "${SECTION}" include | while IFS= read -r dep
+			do
+				if ! grep -q "^${dep}$" "${DEPENDENCIES}"
+				then
+					get_deps "${dep}"
+				fi
+			done
+		fi
 	done
 }
 
@@ -149,5 +160,6 @@ do
 	done
 
 	SOURCES="$(getparam "${section}" paths | tr '\n' ' ')"
+	echo "${SOURCES}"
 	[ -z "$SOURCES" ] || ch_cp -f "${TRACKFILE}" "${ROOT}" ${SOURCES}
 done
