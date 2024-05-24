@@ -127,4 +127,4 @@ replay() {
 	done
 }
 
-ch_depth ${DEPTH_ARGS} --relative-base="${REL}" --trackfile="${TRACKFILE}" -- $* | replay
+ch_depth ${DEPTH_ARGS} --relative-base="${REL}" --trackfile="${TRACKFILE}" -- $(sh -c "echo $*") | replay
