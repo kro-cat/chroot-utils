@@ -27,8 +27,6 @@ while IFS= read -r bin; do
 	fi
 done <<EOF
 xargs
-ch_cp
-iniget
 EOF
 
 options="$(getopt -o h -l 'help,as-specified' -- $@)"
@@ -59,9 +57,6 @@ shift 1
 
 ROOT="$1"
 shift 1
-
-TRACKFILE="${TEMPD}/track"
-touch "${TRACKFILE}"
 
 DEPENDENCIES="${TEMPD}/dependencies"
 touch "${DEPENDENCIES}"
@@ -102,6 +97,32 @@ make_users() {
 			grep "${query}" /etc/passwd >> "${ROOT}/etc/passwd"
 			id -ng "${user}" | make_groups
 		fi
+	done
+}
+
+
+iniget() {
+	INI="$(realpath "${1}")"
+	shift 1
+
+	if ! grep -Fq "[${1}]" "${INI}"
+	then
+		>&2 echo "no section named \"${1}\""
+		exit 1
+	fi
+
+	SECTION="$(sed -nr -e "/^\[${1}\]/,/^\[/{/^\[/!p}" "${INI}")"
+	shift 1
+
+	if [ "$#" -lt 1 ]
+	then
+		echo "${SECTION}"
+		exit 0
+	fi
+
+	for PROP in "$@"
+	do
+		echo "${SECTION}" | sed -nr -e "/^${PROP}[ ]/{s/^[^=]*=[ ]*//;p}" | sed 's/\s\+$/\n/'
 	done
 }
 
@@ -161,5 +182,48 @@ do
 
 	SOURCES="$(getparam "${section}" paths | tr '\n' ' ')"
 	echo "${SOURCES}"
-	[ -z "$SOURCES" ] || ch_cp -f "${TRACKFILE}" "${ROOT}" ${SOURCES}
+
+	SEARCH="$(ls -1d /lib*/ /usr/lib*/ /usr/share/lib*/ $(echo "${PATH}:" | tr ':' ' ') | tr '\n' ' ')"
+
+	SOURCES="$(echo "${SOURCES}" | while read -r source
+	do
+		if [ -e "${source}" ]
+		then
+			echo "${source}"
+			continue
+		fi
+		if ! 2>/dev/null ls -1d "${source}"
+		then
+			find ${SEARCH} -mindepth 1 -maxdepth 1 -path '*${source}'
+		fi
+	done | sort -u | tr '\n' ' ')"
+
+	while [ "${SOURCES}x" != "x" ]
+	do
+		2>/dev/null tar -cf - $SOURCES | tar -xvf - -C "${ROOT}" >&2
+		SOURCES="$(for f in $SOURCES
+		do
+			find "$f" -type l | while read -r link
+			do
+				if [ -e "${link}" ]
+				then
+					cd $(dirname "${link}");
+					realpath "$(readlink -n "${link}")"
+				fi
+			done
+			find "$f" -type f | while read -r file
+			do
+				if [ -e "${link}" ]
+				then
+					ldd "${file}" 2>/dev/null | awk '$3!=""{print $3}$3=""{print $1}'
+				fi
+			done
+		done | sort -u | while read -r source
+		do
+			if [ ! -e "${ROOT}${source}" ]
+			then
+				echo "${source}"
+			fi
+		done | tr '\n' ' ')"
+	done
 done
