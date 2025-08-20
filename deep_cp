@@ -11,6 +11,7 @@ libraries are copied to ROOT as if they were included as a SRC.
 
 Options:
   -h, --help                   print this message
+  -q, --quiet                  suppress verbose logging
 EOF
 	return 0
 }
@@ -25,13 +26,19 @@ done <<EOF
 realpath
 EOF
 
-options="$(getopt -o h -l 'help' -- $@)"
+options="$(getopt -o hq -l 'help,quiet' -- $@)"
 eval set -- "${options}"
+
+TAR_ARGS="-v"
 
 while :; do
 	case "$1" in
 		-h|--help)
 			usage && exit 0
+			;;
+		-q|--quiet)
+			TAR_ARGS=""
+			shift 1
 			;;
 		*)
 			break
@@ -97,7 +104,7 @@ SOURCES="$([ "$#" -eq 0 ] && cat - || (for f in $@;do [ "$f" = "-" ] && cat - ||
 
 while [ "${SOURCES}x" != "x" ]
 do
-	2>/dev/null tar -cf - ${SOURCES} | tar -xvf - -C "${ROOT}"
+	2>/dev/null tar -cf - ${SOURCES} | tar -xf - ${TAR_ARGS} -C "${ROOT}"
 	SOURCES="$(echo "${SOURCES}" | search)"
 done
 
