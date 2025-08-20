@@ -52,7 +52,7 @@ shift 1
 ROOT="$1"
 shift 1
 
-SEARCH="$(ls -p1d /lib*/ /usr/lib*/ /usr/share/lib*/ $(echo "${PATH}:" | tr ':' ' ') | sed 's#//#/#g' | tr '\n' ' ')"
+SEARCH="$(2>/dev/null ls -p1d /lib*/ /usr/lib*/ /usr/share/lib*/ $(echo "${PATH}:" | tr ':' ' ') | sed 's#//#/#g' | tr '\n' ' ')"
 
 filter_out_existing() {
 	while IFS= read -r source
