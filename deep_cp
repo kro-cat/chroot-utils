@@ -97,7 +97,7 @@ SOURCES="$([ "$#" -eq 0 ] && cat - || (for f in $@;do [ "$f" = "-" ] && cat - ||
 
 while [ "${SOURCES}x" != "x" ]
 do
-	2>/dev/null tar -cf - ${SOURCES} | tar -xvf - -C "${ROOT}" >&2
+	2>/dev/null tar -cf - ${SOURCES} | tar -xvf - -C "${ROOT}"
 	SOURCES="$(echo "${SOURCES}" | search)"
 done
 
