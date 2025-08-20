@@ -200,20 +200,20 @@ do
 
 	while [ "${SOURCES}x" != "x" ]
 	do
-		2>/dev/null tar -cf - $SOURCES | tar -xvf - -C "${ROOT}" >&2
-		SOURCES="$(for f in $SOURCES
+		2>/dev/null tar -cf - ${SOURCES} | tar -xvf - -C "${ROOT}" >&2
+		SOURCES="$(for source in ${SOURCES}
 		do
-			find "$f" -type l | while read -r link
+			find "${source}" -type l | while read -r link
 			do
 				if [ -e "${link}" ]
 				then
-					cd $(dirname "${link}");
+					cd $(dirname "${link}")
 					realpath "$(readlink -n "${link}")"
 				fi
 			done
-			find "$f" -type f | while read -r file
+			find "${source}" -type f | while read -r file
 			do
-				if [ -e "${link}" ]
+				if [ -e "${file}" ]
 				then
 					ldd "${file}" 2>/dev/null | awk '$3!=""{print $3}$3=""{print $1}'
 				fi
