@@ -1,0 +1,98 @@
+#!/bin/sh
+set -eu
+
+usage() {
+	cat <<EOF
+Usage: deep_cp [OPTION...] ROOT [SRC...]
+Copy SRC to ROOT rootfs.  If SRC is '-' (default), then read sources from
+standard input.  When copying SRC to ROOT, this program replicates the
+directory and symlink structures in ROOT.  If SRC is an executable file, linked
+libraries are copied to ROOT as if they were included as a SRC.
+
+Options:
+  -h, --help                   print this message
+EOF
+	return 0
+}
+
+# Check for required binaries
+while IFS= read -r bin; do
+	if ! env which "${bin}" >/dev/null 2>&1; then
+		echo "ERROR: Missing required tool: ${bin}" 1>&2
+		exit 1
+	fi
+done <<EOF
+realpath
+EOF
+
+options="$(getopt -o h -l 'help' -- $@)"
+eval set -- "${options}"
+
+while :; do
+	case "$1" in
+		-h|--help)
+			usage && exit 0
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+shift 1
+[ "$#" -lt 1 ] && usage && exit 2
+
+ROOT="$1"
+shift 1
+
+get_src() {
+	for source in $(if [ "$#" -lt 1 ] || [ "$1" = "-" ];then cat -;else echo "$@";fi)
+	do
+		if [ -e "${source}" ]
+		then
+			echo "${source}"
+			continue
+		fi
+		if ! 2>/dev/null ls -1d "${source}"
+		then
+			find ${SEARCH} -mindepth 1 -maxdepth 1 -path '*${source}'
+		fi
+	done | sort -u
+}
+
+search() {
+	for source in $@
+	do
+		for link in $(find "${source}" -type l)
+		do
+			if [ -e "${link}" ]
+			then
+				cd $(dirname "${link}")
+				realpath "$(readlink -n "${link}")"
+			fi
+		done
+		for file in $(find "${source}" -type f)
+		do
+			if [ -e "${file}" ]
+			then
+				ldd "${file}" 2>/dev/null | awk '$3!=""{print $3}$3=""{print $1}'
+			fi
+		done
+	done | sort -u | while read -r s
+do
+	if [ ! -e "${ROOT}${s}" ]
+	then
+		echo "${s}"
+	fi
+done
+}
+
+SEARCH="$(ls -1d /lib*/ /usr/lib*/ /usr/share/lib*/ $(echo "${PATH}:" | tr ':' ' ') | tr '\n' ' ')"
+
+SOURCES="$(get_src $@)"
+
+while [ "${SOURCES}x" != "x" ]
+do
+	2>/dev/null tar -cf - ${SOURCES} | tar -xvf - -C "${ROOT}" >&2
+	SOURCES="$(search ${SOURCES})"
+done

@@ -26,7 +26,8 @@ while IFS= read -r bin; do
 		exit 1
 	fi
 done <<EOF
-xargs
+realpath
+deep_cp
 EOF
 
 options="$(getopt -o h -l 'help,as-specified' -- $@)"
@@ -180,50 +181,5 @@ do
 		mkdir -p "${ROOT}${directory}"
 	done
 
-	SOURCES="$(getparam "${section}" paths | tr '\n' ' ')"
-	echo "${SOURCES}"
-
-	SEARCH="$(ls -1d /lib*/ /usr/lib*/ /usr/share/lib*/ $(echo "${PATH}:" | tr ':' ' ') | tr '\n' ' ')"
-
-	SOURCES="$(echo "${SOURCES}" | while read -r source
-	do
-		if [ -e "${source}" ]
-		then
-			echo "${source}"
-			continue
-		fi
-		if ! 2>/dev/null ls -1d "${source}"
-		then
-			find ${SEARCH} -mindepth 1 -maxdepth 1 -path '*${source}'
-		fi
-	done | sort -u | tr '\n' ' ')"
-
-	while [ "${SOURCES}x" != "x" ]
-	do
-		2>/dev/null tar -cf - ${SOURCES} | tar -xvf - -C "${ROOT}" >&2
-		SOURCES="$(for source in ${SOURCES}
-		do
-			find "${source}" -type l | while read -r link
-			do
-				if [ -e "${link}" ]
-				then
-					cd $(dirname "${link}")
-					realpath "$(readlink -n "${link}")"
-				fi
-			done
-			find "${source}" -type f | while read -r file
-			do
-				if [ -e "${file}" ]
-				then
-					ldd "${file}" 2>/dev/null | awk '$3!=""{print $3}$3=""{print $1}'
-				fi
-			done
-		done | sort -u | while read -r source
-		do
-			if [ ! -e "${ROOT}${source}" ]
-			then
-				echo "${source}"
-			fi
-		done | tr '\n' ' ')"
-	done
+	getparam "${section}" paths | deep_cp "${ROOT}" -
 done
