@@ -70,11 +70,10 @@ get_src() {
 		if [ -e "${source}" ]
 		then
 			echo "${source}"
-			continue
-		fi
-		if ! 2>/dev/null ls -1d "${source}"
+		elif ! 2>/dev/null ls -p1d "${source}"
 		then
-			find ${SEARCH} -mindepth 1 -maxdepth 1 -path '*'"${source}"
+			matches="$(find ${SEARCH} -mindepth 1 -maxdepth 1 -path '*/'"${source}")"
+			[ -z "${matches}" ] && >&2 echo "\`${source}' not found" || echo "${matches}"
 		fi
 	done | sort -u | filter_out_existing
 }
@@ -94,7 +93,7 @@ search() {
 		do
 			if [ -e "${file}" ]
 			then
-				ldd "${file}" 2>/dev/null | grep -v 'statically' | awk '$2=="=>"{print $3}$2!="=>"&&{print $1}'
+				ldd "${file}" 2>/dev/null | grep -v 'not' | awk '$2=="=>"{print $3}$1~/^\//{print $1}'
 			fi
 		done
 	done | sort -u | filter_out_existing
