@@ -94,7 +94,7 @@ search() {
 		do
 			if [ -e "${file}" ]
 			then
-				ldd "${file}" 2>/dev/null | awk '$3!=""{print $3}$3=""{print $1}'
+				ldd "${file}" 2>/dev/null | awk '$3!=""{print $3}$3==""{print $1}'
 			fi
 		done
 	done | sort -u | filter_out_existing
