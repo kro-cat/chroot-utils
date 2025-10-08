@@ -52,7 +52,7 @@ shift 1
 ROOT="$1"
 shift 1
 
-SEARCH="$( { ldconfig -p -c new | awk '$3=="=>"{print $4}' | sort -u | xargs dirname | sort -u; echo "${PATH}:" | tr ':' '\n'; } | xargs ls -p1d | sed 's#//#/#g' | tr '\n' ' ')"
+SEARCH="$( { [ ! -f /etc/ld.so.conf ] || cat /etc/ld.so.conf; ls -p1d /lib* /usr/lib* /usr/local/lib*; echo "${PATH}:" | tr ':' '\n'; } | xargs ls -p1d | sed 's#//#/#g' | tr '\n' ' ')"
 
 filter_out_existing() {
 	while IFS= read -r source
